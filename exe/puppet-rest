@@ -1,0 +1,12 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'puppet/rest'
+require 'pp'
+
+client = Puppet::Rest::Client.new('https://localhost:8140', 'Puppet/6.0.0', '6.0.0')
+begin
+  puts client.find_certificate('ca').body
+ensure
+  client.disconnect
+end

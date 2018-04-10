@@ -8,6 +8,8 @@ if ENV['COVERAGE']
 end
 
 require 'bundler/setup'
+require 'webmock/rspec'
+
 require 'puppet/rest'
 
 RSpec.configure do |config|
