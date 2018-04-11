@@ -6,17 +6,18 @@ require 'puppet/rest'
 CSR = File.join(__dir__, '../spec/fixtures/csr.pem').freeze
 PRIVATE_KEY = File.join(__dir__, '../spec/fixtures/key.pem').freeze
 
+bootstrapper = Puppet::Rest::Bootstrap.new(
+  'ca_bundle.pem',
+  'crl_bundle.pem',
+  CSR,
+  'bismati',
+  'bismati-cert.pem',
+  PRIVATE_KEY
+)
+
 client = Puppet::Rest::Client.new('https://localhost:8140', 'Puppet/6.0.0', '6.0.0')
 begin
-  Puppet::Rest::Bootstrap.new(
-    'ca_bundle.pem',
-    'crl_bundle.pem',
-    CSR,
-    'bismati',
-    'bismati-cert.pem',
-    PRIVATE_KEY
-  ).bootstrap(client)
-
+  bootstrapper.bootstrap(client)
   puts JSON.pretty_generate(JSON.parse(client.status.body))
 rescue => e
   warn e.message
