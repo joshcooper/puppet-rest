@@ -2,89 +2,21 @@
 # frozen_string_literal: true
 
 require 'puppet/rest'
-require 'json'
-require 'openssl'
 
 CSR = File.join(__dir__, '../spec/fixtures/csr.pem').freeze
 PRIVATE_KEY = File.join(__dir__, '../spec/fixtures/key.pem').freeze
 
-def handle_response(response, message)
-  unless response.ok?
-    detail = JSON.parse(response.body)['message'] || response.reason
-    raise "#{message}: #{detail}"
-  end
-end
-
-# Bootstrap CA cert bundle insecurely
-unless File.exist?('ca_bundle.pem')
-  insecure = Puppet::Rest::Client.new('https://localhost:8140', 'Puppet/6.0.0', '6.0.0')
-  begin
-    insecure.ssl_config.verify_mode = OpenSSL::SSL::VERIFY_NONE
-    response = insecure.find_certificate('ca')
-    handle_response(response, 'Failed to download CA bundle')
-
-    File.open('ca_bundle.pem', 'w') { |f| f.write(response.body) }
-  ensure
-    insecure.disconnect
-  end
-end
-
 client = Puppet::Rest::Client.new('https://localhost:8140', 'Puppet/6.0.0', '6.0.0')
 begin
-  client.ssl_config.add_trust_ca('ca_bundle.pem')
-
-  submit_csr = true
-  until File.exist?('bismati-cert.pem')
-    # Try to download cert
-    response = client.find_certificate('bismati')
-    if response.ok?
-      File.open('bismati-cert.pem', 'w') { |f| f.write(response.body) }
-      break
-    end
-
-    if submit_csr
-      submit_csr = false
-
-      response = client.save_certificate_signing_request('bismati', File.new(CSR))
-      handle_response(response, 'Failed to submit CSR')
-      # fall through to download cert
-    else
-      raise 'Exiting; no certificate found and waitforcert is disabled'
-    end
-  end
-
-  client_cert = ::OpenSSL::X509::Certificate.new(File.read('bismati-cert.pem'))
-  private_key = ::OpenSSL::PKey::RSA.new(File.open(PRIVATE_KEY))
-
-  if client_cert.check_private_key(private_key)
-    puts 'Private key matches client certificate'
-  else
-    raise 'Signed client certificate does not match host private key'
-  end
-
-  client.ssl_config.client_cert = client_cert
-  client.ssl_config.client_key = private_key
-  puts "Added client cert for #{client_cert.subject}"
-
-  # puppet requires client certs to download the CRL
-  unless File.exist?('crl_bundle.pem')
-    response = client.find_certificate_revocation_list('ca')
-    handle_response(response, 'Failed to download CRL bundle')
-
-    File.open('crl_bundle.pem', 'w') { |f| f.write(response.body) }
-  end
-
-  File.readlines('crl_bundle.pem', '-----END X509 CRL-----')
-      .map(&:strip)
-      .reject(&:empty?)
-      .uniq
-      .each do |entry|
-    crl = OpenSSL::X509::CRL.new(entry)
-    client.ssl_config.add_crl(crl)
-    puts "Added CRL for #{crl.issuer}"
-  end
-
-  puts 'SSL initialized'
+  Puppet::Rest::Bootstrap.new(
+    'ca_bundle.pem',
+    'crl_bundle.pem',
+    CSR,
+    'bismati',
+    'bismati-cert.pem',
+    PRIVATE_KEY
+  ).bootstrap(client)
+  # do some stuff
 ensure
   client.disconnect
 end

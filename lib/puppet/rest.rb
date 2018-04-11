@@ -7,5 +7,6 @@ module Puppet
   module Rest
     require_relative 'rest/version'
     require_relative 'rest/client'
+    require_relative 'rest/bootstrap'
   end
 end
