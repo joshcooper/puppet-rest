@@ -16,17 +16,17 @@ def handle_response(response, message)
 end
 
 # Bootstrap CA cert bundle insecurely
-insecure = Puppet::Rest::Client.new('https://localhost:8140', 'Puppet/6.0.0', '6.0.0')
-begin
-  insecure.ssl_config.verify_mode = OpenSSL::SSL::VERIFY_NONE
-  response = insecure.find_certificate('ca')
-  handle_response(response, 'Failed to download CA bundle')
+unless File.exist?('ca_bundle.pem')
+  insecure = Puppet::Rest::Client.new('https://localhost:8140', 'Puppet/6.0.0', '6.0.0')
+  begin
+    insecure.ssl_config.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    response = insecure.find_certificate('ca')
+    handle_response(response, 'Failed to download CA bundle')
 
-  File.open('ca_bundle.pem', 'wb') do |f|
-    f.write(response.body)
+    File.open('ca_bundle.pem', 'w') { |f| f.write(response.body) }
+  ensure
+    insecure.disconnect
   end
-ensure
-  insecure.disconnect
 end
 
 client = Puppet::Rest::Client.new('https://localhost:8140', 'Puppet/6.0.0', '6.0.0')
@@ -38,9 +38,7 @@ begin
     # Try to download cert
     response = client.find_certificate('bismati')
     if response.ok?
-      File.open('bismati-cert.pem', 'wb') do |f|
-        f.write(response.body)
-      end
+      File.open('bismati-cert.pem', 'w') { |f| f.write(response.body) }
       break
     end
 
@@ -66,6 +64,26 @@ begin
 
   client.ssl_config.client_cert = client_cert
   client.ssl_config.client_key = private_key
+  puts "Added client cert for #{client_cert.subject}"
+
+  # puppet requires client certs to download the CRL
+  unless File.exist?('crl_bundle.pem')
+    response = client.find_certificate_revocation_list('ca')
+    handle_response(response, 'Failed to download CRL bundle')
+
+    File.open('crl_bundle.pem', 'w') { |f| f.write(response.body) }
+  end
+
+  File.readlines('crl_bundle.pem', '-----END X509 CRL-----')
+      .map(&:strip)
+      .reject(&:empty?)
+      .uniq
+      .each do |entry|
+    crl = OpenSSL::X509::CRL.new(entry)
+    client.ssl_config.add_crl(crl)
+    puts "Added CRL for #{crl.issuer}"
+  end
+
   puts 'SSL initialized'
 ensure
   client.disconnect

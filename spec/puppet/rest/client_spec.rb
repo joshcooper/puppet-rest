@@ -8,6 +8,7 @@ RSpec.describe Puppet::Rest::Client do
   let(:client)         { described_class.new(uri, user_agent, version) }
   let(:cert)           { fixture('cert.pem') }
   let(:csr)            { fixture('csr.pem') }
+  let(:crl)            { fixture('crl.pem') }
 
   def fixture(name)
     File.read(File.join(__dir__, '../../fixtures', name))
@@ -32,6 +33,16 @@ RSpec.describe Puppet::Rest::Client do
         .to_return(body: cert)
 
       expect(client.find_certificate(certname).body).to eq(cert)
+    end
+  end
+
+  describe '#find_certificate_revocation_list' do
+    it "returns a PEM encoded CRL as 'text/plain'" do
+      stub_request(:get, %r{^https://puppet:8140/puppet-ca/v1/certificate_revocation_list/ca})
+        .with(headers: { Accept: 'text/plain' })
+        .to_return(body: crl)
+
+      expect(client.find_certificate_revocation_list('ca').body).to eq(crl)
     end
   end
 

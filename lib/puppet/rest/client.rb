@@ -42,6 +42,14 @@ module Puppet
         )
       end
 
+      def find_certificate_revocation_list(name)
+        @http.get(
+          "puppet-ca/v1/certificate_revocation_list/#{name}",
+          query: { environment: 'production' },
+          header: { Accept: 'text/plain' }
+        )
+      end
+
       def save_certificate_signing_request(name, io)
         @http.put(
           "puppet-ca/v1/certificate_request/#{name}",
