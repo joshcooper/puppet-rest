@@ -17,7 +17,7 @@ module Puppet
       end
 
       def bootstrap(client)
-        bootstrap_ca_bundle
+        bootstrap_ca_bundle(client)
 
         client.ssl_config.add_trust_ca(@ca_path)
         puts 'Added CA certs'
@@ -39,18 +39,18 @@ module Puppet
 
       private
 
-      def bootstrap_ca_bundle
+      def bootstrap_ca_bundle(client)
         # Bootstrap CA cert bundle insecurely
         unless File.exist?(@ca_path)
-          insecure = Puppet::Rest::Client.new('https://localhost:8140', 'Puppet/6.0.0', '6.0.0')
           begin
-            insecure.ssl_config.verify_mode = OpenSSL::SSL::VERIFY_NONE
-            response = insecure.find_certificate('ca')
+            client.ssl_config.verify_mode = OpenSSL::SSL::VERIFY_NONE
+            response = client.find_certificate('ca')
             handle_response(response, 'Failed to download CA bundle')
 
             File.open(@ca_path, 'w', 0644) { |f| f.write(response.body) }
           ensure
-            insecure.disconnect
+            client.ssl_config.verify_mode = OpenSSL::SSL::VERIFY_PEER
+            client.disconnect
           end
         end
       end
