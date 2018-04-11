@@ -34,6 +34,15 @@ module Puppet
         @http.reset_all
       end
 
+      def status
+        # :name doesn't matter
+        @http.get(
+          'puppet/v3/status/server',
+          query: { environment: 'production' },
+          header: { Accept: 'application/json' }
+        )
+      end
+
       def find_certificate(name)
         @http.get(
           "puppet-ca/v1/certificate/#{name}",

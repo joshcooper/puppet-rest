@@ -16,7 +16,11 @@ begin
     'bismati-cert.pem',
     PRIVATE_KEY
   ).bootstrap(client)
-  # do some stuff
+
+  puts JSON.pretty_generate(JSON.parse(client.status.body))
+rescue => e
+  warn e.message
+  exit(1)
 ensure
   client.disconnect
 end

@@ -26,6 +26,21 @@ RSpec.describe Puppet::Rest::Client do
     client.find_certificate(certname)
   end
 
+  describe '#status' do
+    it 'returns is_alive and version in the status' do
+      stub_request(:get, %r{^https://puppet:8140/puppet/v3/status/server})
+        .with(query: { 'environment': 'production' })
+        .to_return(body: '{"is_alive":true,"version":"5.3.6"}')
+
+      response = client.status
+      expect(JSON.parse(response.body))
+        .to eq(
+          'is_alive' => true,
+          'version' => '5.3.6'
+        )
+    end
+  end
+
   describe '#find_certificate' do
     it "returns a PEM encoded certificate as 'text/plain'" do
       stub_request(:get, %r{^https://puppet:8140/puppet-ca/v1/certificate/#{certname}})

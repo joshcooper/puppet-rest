@@ -32,6 +32,9 @@ module Puppet
           client.ssl_config.add_crl(crl)
           puts "Added CRL for #{crl.issuer}"
         end
+
+        puts 'SSL initialized'
+        puts
       end
 
       private
