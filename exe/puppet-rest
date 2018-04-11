@@ -2,11 +2,17 @@
 # frozen_string_literal: true
 
 require 'puppet/rest'
-require 'pp'
+require 'json'
 
 client = Puppet::Rest::Client.new('https://localhost:8140', 'Puppet/6.0.0', '6.0.0')
 begin
   puts client.find_certificate('ca').body
+  puts
+
+  csr = File.read(File.join(__dir__, '../spec/fixtures/csr.pem'))
+  response = client.save_certificate_signing_request('bismati', csr)
+  puts JSON.pretty_generate(JSON.parse(response.body)) unless response.ok?
+  puts
 ensure
   client.disconnect
 end

@@ -7,6 +7,7 @@ RSpec.describe Puppet::Rest::Client do
   let(:user_agent)     { "Puppet/#{version} Ruby/2.4.3-p205 (x86_64-darwin15)" }
   let(:client)         { described_class.new(uri, user_agent, version) }
   let(:cert)           { fixture('cert.pem') }
+  let(:csr)            { fixture('csr.pem') }
 
   def fixture(name)
     File.read(File.join(__dir__, '../../fixtures', name))
@@ -31,6 +32,16 @@ RSpec.describe Puppet::Rest::Client do
         .to_return(body: cert)
 
       expect(client.find_certificate(certname).body).to eq(cert)
+    end
+  end
+
+  describe '#save_certificate_signing_request' do
+    it "submits a PEM encoded CSR as 'text/plain'" do
+      stub_request(:put, %r{^https://puppet:8140/puppet-ca/v1/certificate_request/#{certname}})
+        .with(headers: { 'Content-Type': 'text/plain' })
+        .with(body: csr)
+
+      client.save_certificate_signing_request(certname, csr)
     end
   end
 end

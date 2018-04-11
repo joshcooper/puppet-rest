@@ -49,6 +49,18 @@ module Puppet
         )
       end
 
+      def save_certificate_signing_request(name, io)
+        @http.put(
+          "puppet-ca/v1/certificate_request/#{name}",
+          query: { environment: 'production' },
+          header: {
+            'Content-Type': 'text/plain',
+            Accept: 'text/plain'
+          },
+          body: io
+        )
+      end
+
       def filter_request(req)
         warn "Connecting to #{req.header.request_uri} (#{req.header.request_method})"
       end
