@@ -4,6 +4,8 @@ module Puppet
   module Rest
     # TBD
     class Client
+      attr_reader :ssl_config
+
       def initialize(uri, user_agent, version)
         @http = HTTPClient.new(
           base_url: uri,
@@ -22,19 +24,10 @@ module Puppet
         @http.receive_timeout = 60 * 60
         @http.request_filter << self
 
-        ssl_config = @http.ssl_config
-        ssl_config.clear_cert_store
-        ssl_config.verify_mode = OpenSSL::SSL::VERIFY_PEER
-        ssl_config.add_trust_ca(
-          File.expand_path('~/.puppetlabs/etc/puppet/ssl/certs/ca.pem')
-        )
-        ssl_config.set_client_cert_file(
-          File.expand_path('~/.puppetlabs/etc/puppet/ssl/certs/localhost.pem'),
-          File.expand_path('~/.puppetlabs/etc/puppet/ssl/private_keys/localhost.pem')
-        )
-        ssl_config.add_crl(
-          File.expand_path('~/.puppetlabs/etc/puppet/ssl/crl.pem')
-        )
+        # secure defaults, trusted certs must be explicitly added
+        @ssl_config = @http.ssl_config
+        @ssl_config.clear_cert_store
+        @ssl_config.verify_mode = OpenSSL::SSL::VERIFY_PEER
       end
 
       def disconnect
